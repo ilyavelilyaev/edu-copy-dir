@@ -31,28 +31,34 @@ int main(int argc, char* argv[])
     fs::path path_from = fs::path(argv[1]);
     fs::path path_where = fs::path(argv[2]);
     
-    if (!fs::is_directory(path_from) || !fs::is_directory(path_where)) {
-        std::cerr << "Error! One of pathes is incorrect.\n";
+    try {
+        
+        if (!fs::exists(path_from) || !fs::exists(path_where) ||
+            !fs::is_directory(path_from) || !fs::is_directory(path_where)) {
+            std::cerr << "Error! One of pathes is incorrect.\n";
+            print_usage();
+        }
+        
+        
+        //If everything is ok, then copying.
+        //Making pathes canonical.
+        path_from = fs::canonical(path_from);
+        path_where = fs::canonical(path_where);
+        //Creating directory with same name in where path.
+        
+        std::cout << path_where << std::endl;
+        
+        if (fs::create_directory(path_where / path_from.filename())) {
+            std::cout << "Created Directory: " <<  path_where / path_from.filename() << "\n";
+        } else {
+            std::cerr << "Error: Couldn't create dir \'" << path_where / path_from.filename() << "\' (maybe it is already existing)\n";
+            print_usage();
+        }
+    } catch (fs::filesystem_error const &e) {
+        std::cerr << e.what() << "\n";
         print_usage();
     }
     
-    
-    //If everything is ok, then copying.
-    //Making pathes canonical.
-    path_from = fs::canonical(path_from);
-    path_where = fs::canonical(path_where);
-    //Creating directory with same name in where path.
-    path_where += "/";
-    path_where += path_from.filename();
-    std::cout << path_where << std::endl;
-    if (fs::create_directory(path_where)) {
-        std::cout << "Created Directory: " <<  path_where << "\n";
-    } else {
-        std::cout << "Error: Couldn't create dir (maybe it is already existing)\n";
-        print_usage();
-    }
-    /*
-    std::cout << path_from << std::endl << path_from.root_name() << std::endl << path_from.root_directory() << std::endl << path_from.root_path() << std::endl << path_from.relative_path() << std::endl << path_from.parent_path() << std::endl << path_from.filename() << std::endl << path_from.stem() << std::endl << path_from.extension() << std::endl;    //Iterating through directory. */
     //Creating List of paths
     
     std::vector <fs::path> vec_of_paths_to_copy;
@@ -60,6 +66,24 @@ int main(int argc, char* argv[])
     
     for (std::vector<fs::path>::const_iterator it(vec_of_paths_to_copy.begin()); it != vec_of_paths_to_copy.end(); it++) {
         std::cout << *it << std::endl;
+        try {
+            fs::path current(*it);
+            fs::path rel = path_from.filename() / fs::relative(current, path_from);
+            
+            if (fs::is_directory(current)) {
+                if (fs::create_directory(path_where / rel)) {
+                    std::cout << "Created Directory: \'" <<  path_where / rel << "\'\n";
+                } else {
+                    std::cerr << "Error: Couldn't create dir \'" << path_where / rel << "\' (maybe it is already existing)\n";
+                    print_usage();
+                }
+            } else {
+                fs::copy_file(current, path_where / rel);
+            }
+        } catch (fs::filesystem_error const &e) {
+            std::cerr << e.what() << "\n";
+            print_usage();
+        }
     }
     
     
